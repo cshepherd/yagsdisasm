@@ -48,8 +48,7 @@ class Input_PO
 	 */
 	public function getBlocks( $starting_block, $num_blocks )
 	{
-		fseek( $fp, $this->image_offset, SEEK_SET );
-		fseek( $fp, $starting_block*512 );
+		fseek( $fp, $starting_block*512, SEEK_SET );
 		$data = '';
 		for( $blk=0;$blk<$num_blocks;$blk++ )
 		{
