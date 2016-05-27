@@ -477,9 +477,9 @@ class Disassembler_65816
 			case 'PCRel':
 				if( ord($arg_bytes[0]) > 127)
 				{
-					$output .= sprintf( ' %04X {-%02X}', $this->rel_offset( $this->pc, ord($arg_bytes[0]),strlen($arg_bytes)), 256-ord($arg_bytes[0]));
+					$output .= sprintf( ' %04X {-%02X}', $this->rel_offset( ord($arg_bytes[0]),strlen($arg_bytes)), 256-ord($arg_bytes[0]));
 				} else {
-					$output .= sprintf( ' %04X {+%02X}', $this->rel_offset( $this->pc, ord($arg_bytes[0]),strlen($arg_bytes)), ord($arg_bytes[0]));					
+					$output .= sprintf( ' %04X {+%02X}', $this->rel_offset( ord($arg_bytes[0]),strlen($arg_bytes)), ord($arg_bytes[0]));					
 				}
 				break;
 			case 'Abs':
@@ -527,9 +527,9 @@ class Disassembler_65816
 				$offset = (ord($arg_bytes[1])*256)+ord($arg_bytes[0]);
 				if( $offset > 32767 )
 				{
-					$output .= sprintf( ' %04X {-%02X}', $this->rel_long_offset( $this->pc, $offset, strlen($arg_bytes)), 65536-$offset);
+					$output .= sprintf( ' %04X {-%02X}', $this->rel_long_offset( $offset, strlen($arg_bytes)), 65536-$offset);
 				} else {
-					$output .= sprintf( ' %04X {+%02X}', $this->rel_long_offset( $this->pc, $offset, strlen($arg_bytes)), $offset);					
+					$output .= sprintf( ' %04X {+%02X}', $this->rel_long_offset( $offset, strlen($arg_bytes)), $offset);					
 				}
 				break;
 			case 'StackAbs':
