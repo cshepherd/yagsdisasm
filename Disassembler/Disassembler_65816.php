@@ -1,12 +1,99 @@
 <?php
-/*
+/**
  * Disassembler_65816 - A 65816 disassembler, of course
  * loosely references Andy McFadden's Ciderpress disassembler work at
  *   https://github.com/fadden/ciderpress/blob/master/reformat/DisasmTable.cpp
  */
 class Disassembler_65816
 {
-	/*
+	/**
+	 * 65816 X status register
+	 */
+	private $x_flag;
+
+	/**
+	 * 65816 M status register
+	 */
+	private $m_flag;
+
+	/**
+	 * 65816 emulation mode flag
+	 */
+	private $e_flag;
+
+	/**
+	 * program counter
+	 */
+	private $pc;
+
+	/**
+	 * array of byte groups to not disassemble
+	 */
+	private $bytes_queue = array();
+
+	/**
+	 * set_x_flag() - set 65816 'X' processor status flag
+	 *
+	 */
+	public function set_x_flag()
+	{
+		$this->x_flag = 1;
+	}
+
+	/**
+	 * clear_x_flag() - clear 65816 'X' processor status flag
+	 *
+	 */
+	public function clear_x_flag()
+	{
+		$this->x_flag = 0;
+	}
+
+	/**
+	 * set_m_flag() - set 65816 'M' processor status flag
+	 *
+	 */
+	public function set_m_flag()
+	{
+		$this->m_flag = 1;
+	}
+
+	/**
+	 * clear_m_flag() - clear 65816 'M' processor status flag
+	 *
+	 */
+	public function clear_m_flag()
+	{
+		$this->m_flag = 0;
+	}
+
+	/**
+	 * set_e_flag() - set 65816 'E' processor status flag
+	 *
+	 */
+	public function set_e_flag()
+	{
+		$this->e_flag = 1;
+	}
+
+	/**
+	 * clear_e_flag() - clear 65816 'E' processor status flag
+	 *
+	 */
+	public function clear_e_flag()
+	{
+		$this->e_flag = 0;
+	}
+
+	/**
+	 * raw_bytes() - personality tells us not to disassemble the next $num_bytes bytes
+	 */
+	public function do_raw_bytes( $bytes_queue )
+	{
+		$this->bytes_queue = $bytes_queue;
+	}
+
+	/**
 	 * initialization here
 	 */
 	public function __construct()
@@ -287,17 +374,17 @@ class Disassembler_65816
 	}
 
 	/**
-	 * rel_offset( $pc, $offset ) - compute absolute offset vs program counter for a branch offset
+	 * rel_offset( $offset ) - compute absolute offset vs program counter for a branch offset
 	 *
-	 * @param $pc int, $offset int
+	 * @param $offset int
 	 */
-	private function rel_offset( $pc, $offset, $offset2 )
+	private function rel_offset( $offset, $offset2 )
 	{
 		if( $offset > 127 )
 		{
-			$result = $pc - (256-$offset);
+			$result = $this->pc - (256-$offset);
 		} else {
-			$result = $pc + $offset;
+			$result = $this->pc + $offset;
 		}
 
 		$result += $offset2+1;
@@ -306,17 +393,17 @@ class Disassembler_65816
 	}
 
 	/**
-	 * rel_long_offset( $pc, $offset ) - compute absolute offset vs program counter for a branch offset
+	 * rel_long_offset( $offset, $offset2 ) - compute absolute offset vs program counter for a branch offset
 	 *
-	 * @param $pc int, $offset int
+	 * @param $offset int, $offset2 int
 	 */
-	private function rel_long_offset( $pc, $offset, $offset2 )
+	private function rel_long_offset( $offset, $offset2 )
 	{
 		if( $offset > 32767 )
 		{
-			$result = $pc - (65536-$offset);
+			$result = $this->pc - (65536-$offset);
 		} else {
-			$result = $pc + $offset;
+			$result = $this->pc + $offset;
 		}
 
 		$result += $offset2+1;
@@ -325,26 +412,26 @@ class Disassembler_65816
 	}
 
 	/**
-	 * print_instruction( $opcode_txt, $opcode, $mode, $arg_bytes, $pc ) - Output text-friendly disassembled output for one instruction
+	 * print_instruction( $opcode_txt, $opcode, $mode, $arg_bytes ) - Output text-friendly disassembled output for one instruction
 	 *
-	 * @param $opcode_txt str, $opcode int, $mode str, $arg_bytes str, $pc int
+	 * @param $opcode_txt str, $opcode int, $mode str, $arg_bytes str
 	 */
-	public function print_instruction( $opcode_txt, $opcode, $mode, $arg_bytes, $pc )
+	public function print_instruction( $opcode_txt, $opcode, $mode, $arg_bytes )
 	{
 		// first print the program counter and hex bytes
 		switch( strlen( $arg_bytes ))
 		{
 			case 0:
-				$output = sprintf( '%06X-   %02X          ', $pc, $opcode );
+				$output = sprintf( '%06X-   %02X          ', $this->pc, $opcode );
 				break;
 			case 1:
-				$output = sprintf( '%06X-   %02X %02X       ', $pc, $opcode, ord($arg_bytes[0]) );
+				$output = sprintf( '%06X-   %02X %02X       ', $this->pc, $opcode, ord($arg_bytes[0]) );
 				break;
 			case 2:
-				$output = sprintf( '%06X-   %02X %02X %02X    ', $pc, $opcode, ord($arg_bytes[0]), ord($arg_bytes[1]) );
+				$output = sprintf( '%06X-   %02X %02X %02X    ', $this->pc, $opcode, ord($arg_bytes[0]), ord($arg_bytes[1]) );
 				break;
 			case 3:
-				$output = sprintf( '%06X-   %02X %02X %02X %02X ', $pc, $opcode, ord($arg_bytes[0]), ord($arg_bytes[1]), ord($arg_bytes[2]) );
+				$output = sprintf( '%06X-   %02X %02X %02X %02X ', $this->pc, $opcode, ord($arg_bytes[0]), ord($arg_bytes[1]), ord($arg_bytes[2]) );
 				break;
 		}
 
@@ -390,9 +477,9 @@ class Disassembler_65816
 			case 'PCRel':
 				if( ord($arg_bytes[0]) > 127)
 				{
-					$output .= sprintf( ' %04X {-%02X}', $this->rel_offset( $pc, ord($arg_bytes[0]),strlen($arg_bytes)), 256-ord($arg_bytes[0]));
+					$output .= sprintf( ' %04X {-%02X}', $this->rel_offset( $this->pc, ord($arg_bytes[0]),strlen($arg_bytes)), 256-ord($arg_bytes[0]));
 				} else {
-					$output .= sprintf( ' %04X {+%02X}', $this->rel_offset( $pc, ord($arg_bytes[0]),strlen($arg_bytes)), ord($arg_bytes[0]));					
+					$output .= sprintf( ' %04X {+%02X}', $this->rel_offset( $this->pc, ord($arg_bytes[0]),strlen($arg_bytes)), ord($arg_bytes[0]));					
 				}
 				break;
 			case 'Abs':
@@ -440,9 +527,9 @@ class Disassembler_65816
 				$offset = (ord($arg_bytes[1])*256)+ord($arg_bytes[0]);
 				if( $offset > 32767 )
 				{
-					$output .= sprintf( ' %04X {-%02X}', $this->rel_long_offset( $pc, $offset, strlen($arg_bytes)), 65536-$offset);
+					$output .= sprintf( ' %04X {-%02X}', $this->rel_long_offset( $this->pc, $offset, strlen($arg_bytes)), 65536-$offset);
 				} else {
-					$output .= sprintf( ' %04X {+%02X}', $this->rel_long_offset( $pc, $offset, strlen($arg_bytes)), $offset);					
+					$output .= sprintf( ' %04X {+%02X}', $this->rel_long_offset( $this->pc, $offset, strlen($arg_bytes)), $offset);					
 				}
 				break;
 			case 'StackAbs':
@@ -470,18 +557,22 @@ class Disassembler_65816
 	 */
 	public function disassemble( $m_flag, $x_flag, $e_flag, $origin, $data, $personality )
 	{
-		$pc = $origin;
+		$this->x_flag = $x_flag;
+		$this->e_flag = $e_flag;
+		$this->m_flag = $m_flag;
+
+		$this->pc = $origin;
 		$data_index = 0;
 		$last_output = '';
 		
 		echo "                      ORG ".sprintf('%06X',$origin)."\n";
-		if( $m_flag > 0)
+		if( $this->m_flag > 0)
 		{
 			$print_m = '1';
 		} else {
 			$print_m = '0';
 		}
-		if( $x_flag > 0 )
+		if( $this->x_flag > 0 )
 		{
 			$print_x = '1';
 		} else {
@@ -539,7 +630,7 @@ class Disassembler_65816
 					$width = 4;
 					break;
 				case 'StackInt':
-					if( $e_flag )
+					if( $this->e_flag )
 					{
 						$width = 1;
 					} else {
@@ -548,17 +639,17 @@ class Disassembler_65816
 					break;
 				case 'Imm':
 					$width = 2;
-					if( $e_flag == 0 )
+					if( $this->e_flag == 0 )
 					{
 						if( in_array( $opcode_txt, array( 'CPX', 'CPY', 'LDX', 'LDY' )))
 						{
-							if( $x_flag == 0 )
+							if( $this->x_flag == 0 )
 							{
 								$width = 3;
 							}
 						} elseif( in_array( $opcode_txt, array( 'ADC', 'AND', 'BIT', 'CMP', 'EOR', 'LDA', 'ORA', 'SBC' )))
 						{
-							if( $m_flag == 0 )
+							if( $this->m_flag == 0 )
 							{
 								$width = 3;
 							}
@@ -580,11 +671,11 @@ class Disassembler_65816
 				$arg_bytes .= $data[$data_index + $ind];
 			}
 
-			$output = $this->print_instruction( $opcode_txt, ord($opcode), $mode, $arg_bytes, $pc );
+			$output = $this->print_instruction( $opcode_txt, ord($opcode), $mode, $arg_bytes );
 
 			// Personality support
 			$this_output = substr( $output, 22 );
-			$comment = $personality->check( $last_output, $this_output );
+			$comment = $personality->check( $last_output, $this_output, $this );
 			if( $comment )
 			{
 				for($pad=strlen($output);$pad<42;$pad++)
@@ -596,8 +687,52 @@ class Disassembler_65816
 			$last_output = $this_output;
 
 			echo "{$output}\n";
-			$pc += $width;
+			$this->pc += $width;
 			$data_index += $width;
+
+			// raw bytes support, if the Personality module signalled them. hacky.
+			foreach( $this->bytes_queue as $raw_bytes)
+			{
+				// if personality told us the next few bytes will be raw, then handle them that way
+				while( $raw_bytes > 0 )
+				{
+					if( $raw_bytes == 1 )
+					{
+						$output = sprintf( '%06X-   %02X          DB ', $this->pc, ord( $data[$data_index] ));
+						$output .= sprintf( ' %02X', ord( $data[$data_index] ));
+						$width = 1;
+					}
+					if( $raw_bytes == 4 )
+					{
+						$output = sprintf( '%06X-   %02X %02X %02X %02X ', $this->pc, ord($data[$data_index]), ord($data[$data_index+1]), ord($data[$data_index+2]), ord($data[$data_index+3]) );
+						$output .= sprintf( ' %02X%02X%02X%02X', ord($data[$data_index+3]), ord($data[$data_index+2]), ord($data[$data_index+1]), ord($data[$data_index]));
+						$width = 4;
+					}
+					if( $raw_bytes > 1 )
+					{
+						$output = sprintf( '%06X-   %02X %02X       DW ', $this->pc, ord($data[$data_index]), ord($data[$data_index+1]) );
+						$output .= sprintf( ' %02X%02X', ord($data[$data_index+1]), ord($data[$data_index]));
+						$width = 2;
+					}
+					$raw_bytes -= $width;
+					$this_output = substr( $output, 22 );
+					$comment = $personality->check( $last_output, $this_output, $this );
+					if( $comment )
+					{
+						for($pad=strlen($output);$pad<42;$pad++)
+						{
+							$output .= ' ';
+						}
+						$output .= '; '.$comment;
+					}
+					$last_output = $this_output;
+					echo "{$output}\n";
+					$this->pc += $width;
+					$data_index += $width;
+				}
+			}
+			$this->bytes_queue = array();
+
 		} // for
 	}
 }
